@@ -12,7 +12,7 @@
 #
 # prepending $PWD/../bin to PATH to ensure we are picking up the correct binaries
 # this may be commented out to resolve installed version of tools if desired
-export PATH=${PWD}/../bin:$PATH
+export PATH=${PWD}/../bin:${PWD}:$PATH
 export FABRIC_CFG_PATH=${PWD}/configtx
 export VERBOSE=false
 
@@ -37,7 +37,6 @@ function printHelp() {
   echo "    -l <language> - the programming language of the chaincode to deploy: go (default), java, javascript, typescript"
   echo "    -v <version>  - chaincode version. Must be a round number, 1, 2, 3, etc"
   echo "    -i <imagetag> - the tag to be used to launch the network (defaults to \"latest\")"
-  echo "    -cai <ca_imagetag> - the image tag to be used for CA (defaults to \"${CA_IMAGETAG}\")"
   echo "    -verbose - verbose mode"
   echo "  network.sh -h (print this message)"
   echo
@@ -125,30 +124,6 @@ function checkPrereqs() {
       exit 1
     fi
   done
-
-  ## Check for fabric-ca
-  if [ "$CRYPTO" == "Certificate Authorities" ]; then
-
-    fabric-ca-client version > /dev/null 2>&1
-    if [[ $? -ne 0 ]]; then
-      echo "ERROR! fabric-ca-client binary not found.."
-      echo
-      echo "Follow the instructions in the Fabric docs to install the Fabric Binaries:"
-      echo "https://hyperledger-fabric.readthedocs.io/en/latest/install.html"
-      exit 1
-    fi
-    CA_LOCAL_VERSION=$(fabric-ca-client version | sed -ne 's/ Version: //p')
-    CA_DOCKER_IMAGE_VERSION=$(docker run --rm hyperledger/fabric-ca:$CA_IMAGETAG fabric-ca-client version | sed -ne 's/ Version: //p' | head -1)
-    echo "CA_LOCAL_VERSION=$CA_LOCAL_VERSION"
-    echo "CA_DOCKER_IMAGE_VERSION=$CA_DOCKER_IMAGE_VERSION"
-
-    if [ "$CA_LOCAL_VERSION" != "$CA_DOCKER_IMAGE_VERSION" ]; then
-      echo "=================== WARNING ======================"
-      echo "  Local fabric-ca binaries and docker images are  "
-      echo "  out of sync. This may cause problems.           "
-      echo "=================================================="
-    fi
-  fi
 }
 
 
@@ -240,12 +215,26 @@ function createOrgs() {
   # Create crypto material using Fabric CAs
   if [ "$CRYPTO" == "Certificate Authorities" ]; then
 
+    fabric-ca-client version > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+      echo "Fabric CA client not found locally, downloading..."
+      cd ..
+      curl -s -L "https://github.com/hyperledger/fabric-ca/releases/download/v1.4.4/hyperledger-fabric-ca-${OS_ARCH}-1.4.4.tar.gz" | tar xz || rc=$?
+    if [ -n "$rc" ]; then
+        echo "==> There was an error downloading the binary file."
+        echo "fabric-ca-client binary is not available to download"
+    else
+        echo "==> Done."
+      cd test-network
+    fi
+    fi
+
     echo
     echo "##########################################################"
     echo "##### Generate certificates using Fabric CA's ############"
     echo "##########################################################"
 
-    IMAGE_TAG=${CA_IMAGETAG} docker-compose -f $COMPOSE_FILE_CA up -d 2>&1
+    IMAGE_TAG=$IMAGETAG docker-compose -f $COMPOSE_FILE_CA up -d 2>&1
 
     . organizations/fabric-ca/registerEnroll.sh
 
@@ -448,8 +437,6 @@ CC_SRC_LANGUAGE=golang
 VERSION=1
 # default image tag
 IMAGETAG="latest"
-# default ca image tag
-CA_IMAGETAG="latest"
 # default database
 DATABASE="leveldb"
 
@@ -511,10 +498,6 @@ while [[ $# -ge 1 ]] ; do
     ;;
   -i )
     IMAGETAG="$2"
-    shift
-    ;;
-  -cai )
-    CA_IMAGETAG="$2"
     shift
     ;;
   -verbose )

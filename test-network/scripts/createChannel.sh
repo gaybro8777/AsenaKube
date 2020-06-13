@@ -35,13 +35,13 @@ createAncorPeerTx() {
 
 	for orgmsp in Org1MSP Org2MSP; do
 
-	echo "#######    Generating anchor peer update transaction for ${orgmsp}  ##########"
+	echo "#######    Generating anchor peer update for ${orgmsp}  ##########"
 	set -x
 	configtxgen -profile TwoOrgsChannel -outputAnchorPeersUpdate ./channel-artifacts/${orgmsp}anchors.tx -channelID $CHANNEL_NAME -asOrg ${orgmsp}
 	res=$?
 	set +x
 	if [ $res -ne 0 ]; then
-		echo "Failed to generate anchor peer update transaction for ${orgmsp}..."
+		echo "Failed to generate anchor peer update for ${orgmsp}..."
 		exit 1
 	fi
 	echo
@@ -56,7 +56,7 @@ createChannel() {
 	while [ $rc -ne 0 -a $COUNTER -lt $MAX_RETRY ] ; do
 		sleep $DELAY
 		set -x
-		peer channel create -o localhost:7050 -c $CHANNEL_NAME --ordererTLSHostnameOverride orderer.example.com -f ./channel-artifacts/${CHANNEL_NAME}.tx --outputBlock ./channel-artifacts/${CHANNEL_NAME}.block --tls --cafile $ORDERER_CA >&log.txt
+		peer channel create -o localhost:7050 -c $CHANNEL_NAME --ordererTLSHostnameOverride orderer.org0.com -f ./channel-artifacts/${CHANNEL_NAME}.tx --outputBlock ./channel-artifacts/${CHANNEL_NAME}.block --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA >&log.txt
 		res=$?
 		set +x
 		let rc=$res
@@ -99,7 +99,7 @@ updateAnchorPeers() {
 	while [ $rc -ne 0 -a $COUNTER -lt $MAX_RETRY ] ; do
     sleep $DELAY
     set -x
-		peer channel update -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com -c $CHANNEL_NAME -f ./channel-artifacts/${CORE_PEER_LOCALMSPID}anchors.tx --tls --cafile $ORDERER_CA >&log.txt
+		peer channel update -o localhost:7050 --ordererTLSHostnameOverride orderer.org0.com -c $CHANNEL_NAME -f ./channel-artifacts/${CORE_PEER_LOCALMSPID}anchors.tx --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA >&log.txt
     res=$?
     set +x
 		let rc=$res
@@ -123,11 +123,11 @@ verifyResult() {
 FABRIC_CFG_PATH=${PWD}/configtx
 
 ## Create channeltx
-echo "### Generating channel create transaction '${CHANNEL_NAME}.tx' ###"
+echo "### Generating channel configuration transaction '${CHANNEL_NAME}.tx' ###"
 createChannelTx
 
 ## Create anchorpeertx
-echo "### Generating anchor peer update transactions ###"
+echo "### Generating channel configuration transaction '${CHANNEL_NAME}.tx' ###"
 createAncorPeerTx
 
 FABRIC_CFG_PATH=$PWD/../config/
