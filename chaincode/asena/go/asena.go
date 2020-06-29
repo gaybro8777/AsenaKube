@@ -117,6 +117,12 @@ func (asc *AsenaSmartContract) InitLedger(ctx contractapi.TransactionContextInte
 	return nil
 }
 
+// QueryAllCars is called when instantiating the chaincode
+func (asc *AsenaSmartContract) QueryAllCars(ctx contractapi.TransactionContextInterface, args []string) error {
+
+	return nil
+}
+
 func main() {
 
 	chaincode, err := contractapi.NewChaincode(new(AsenaSmartContract))
