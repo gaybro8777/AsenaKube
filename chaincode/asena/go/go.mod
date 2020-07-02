@@ -1,4 +1,4 @@
-module github.com/gokhankocak/AsenaKube/chaincode/asena/go
+module github.com/gokhankocak/AsenaKube/tree/master/chaincode/asena/go
 
 go 1.13
 
